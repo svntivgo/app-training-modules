@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { User } from '../model/users.model';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { UserDto, UserPatchDto } from '../model/user.dto';
 
 @Injectable()
 export class UsersService {
-  users: User[] = [];
+  private users: UserDto[] = [];
 
-  usuario1: User = new User('Pepito', 'pepito@email.com', 'Garcia');
-  usuario2: User = new User('Juanito', 'juanito@email.com', 'Garcia');
-  usuario3: User = new User('Maria', 'maria@email.com');
+  usuario1: UserDto = new UserDto('Pepito', 'pepito@email.com', 'Garcia');
+  usuario2: UserDto = new UserDto('Juanito', 'juanito@email.com', 'Garcia');
+  usuario3: UserDto = new UserDto('Maria', 'maria@email.com');
 
   constructor() {
     this.users.push(this.usuario1);
@@ -19,44 +19,64 @@ export class UsersService {
     return 'Hola desde el servicio de Users';
   }
 
-  getAllUsers(): User[] {
+  getAllUsers(): UserDto[] {
     return this.users;
   }
 
-  getUserById(id: string): User | string {
-    const user = this.users.find((user) => user.id === id);
-    return user ? user : 'Usuario no existe';
+  getUserById(id: string): UserDto | undefined {
+    try {
+      const user = this.users.find((user) => user.uuid === id);
+      if (user === undefined) {
+        throw new Error('No se encontró un usuario con ese id');
+      }
+      return user ? user : undefined;
+    } catch (error) {
+      throw new HttpException(
+        {
+          status: HttpStatus.NOT_FOUND,
+          error: error.message,
+        },
+        HttpStatus.NOT_FOUND,
+        {
+          cause: error,
+        },
+      );
+    }
   }
 
-  createUser(user: User): User | string {
-    if (!user.nombre || !user.email) return 'Debe enviar nombre y email';
-    const nuevoUser: User = new User(user.nombre, user.email, user.apellido);
+  createUser(user: UserDto): UserDto | string {
+    if (!user.name || !user.email) return 'Debe enviar nombre y email';
+    const nuevoUser: UserDto = new UserDto(
+      user.name,
+      user.email,
+      user.lastName,
+    );
     this.users.push(nuevoUser);
     return nuevoUser;
   }
 
-  updateUser(id: string, user: User): User | string {
-    if (!user.nombre || !user.email) return 'Debe enviar nombre y email';
-    const userFound = this.users.find((user) => user.id === id);
+  updateUser(id: string, user: UserDto): UserDto | string {
+    if (!user.name || !user.email) return 'Debe enviar nombre y email';
+    const userFound = this.users.find((user) => user.uuid === id);
     if (!userFound) return 'Usuario no existe';
-    userFound.nombre = user.nombre ?? userFound.nombre;
-    userFound.email = user.email ?? userFound.email;
-    userFound.apellido = user.apellido ?? userFound.apellido;
+    userFound.name = user.name;
+    userFound.email = user.email;
+    userFound.lastName = user.lastName ?? userFound.lastName;
     return userFound;
   }
 
-  patchUser(id: string, user: User): User | string {
-    const userFound = this.users.find((user) => user.id === id);
+  patchUser(id: string, user: UserPatchDto): UserDto | string {
+    const userFound = this.users.find((user) => user.uuid === id);
     if (!userFound) return 'Usuario no existe';
-    userFound.nombre = user.nombre ?? userFound.nombre;
+    userFound.name = user.name ?? userFound.name;
     userFound.email = user.email ?? userFound.email;
-    userFound.apellido = user.apellido ?? userFound.apellido;
+    userFound.lastName = user.lastName ?? userFound.lastName;
     return userFound;
   }
 
   deleteUserById(id: string): boolean {
     const valor = this.users.find((user, i) => {
-      if (user?.id === id) {
+      if (user?.uuid === id) {
         this.users.splice(i, 1);
         return user;
       }
